@@ -1,8 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { saveCVToStorage, getCVById } from '../utils/cvStorage';
 import { CV, PersonalInfo, Experience, Education, Skill } from '../types/cv';
+import { CVTemplate, CV_TEMPLATES } from '../types/template';
+import { useAutoSave } from '../hooks/useAutoSave';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Trash2, Save, Eye } from 'lucide-react';
+import { Plus, Trash2, Save, Eye, Palette } from 'lucide-react';
+import TemplateSelector from './TemplateSelector';
+import EnhancedCVPreview from './EnhancedCVPreview';
 
 const CVEditor = () => {
   const { user } = useAuth();
@@ -40,6 +43,14 @@ const CVEditor = () => {
     updatedAt: new Date().toISOString()
   });
 
+  const [selectedTemplate, setSelectedTemplate] = useState<CVTemplate>(CV_TEMPLATES[0]);
+  const [customColors, setCustomColors] = useState({ primary: '#3b82f6', secondary: '#1e40af' });
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  // Auto-save functionality
+  useAutoSave(cv);
+
   useEffect(() => {
     if (cvId && cvId !== 'new') {
       const existingCV = getCVById(cvId);
@@ -65,6 +76,18 @@ const CVEditor = () => {
   const handlePreview = () => {
     handleSave();
     navigate(`/cv/${cv.id}/preview`);
+  };
+
+  const handleTemplateChange = (template: CVTemplate) => {
+    setSelectedTemplate(template);
+    setCustomColors({
+      primary: template.colors.primary,
+      secondary: template.colors.secondary
+    });
+  };
+
+  const handleColorChange = (colors: { primary: string; secondary: string }) => {
+    setCustomColors(colors);
   };
 
   const updatePersonalInfo = (field: keyof PersonalInfo, value: string) => {
@@ -187,6 +210,20 @@ const CVEditor = () => {
               />
             </div>
             <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowTemplateSelector(!showTemplateSelector)}
+              >
+                <Palette className="h-4 w-4 mr-2" />
+                Templates
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsPreviewMode(!isPreviewMode)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                {isPreviewMode ? 'Edit' : 'Preview'}
+              </Button>
               <Button variant="outline" onClick={handleSave}>
                 <Save className="h-4 w-4 mr-2" />
                 Save
@@ -201,310 +238,351 @@ const CVEditor = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
-          {/* Personal Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    value={cv.personalInfo.fullName}
-                    onChange={(e) => updatePersonalInfo('fullName', e.target.value)}
-                    placeholder="John Doe"
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Panel - Editor or Template Selector */}
+          <div className="lg:col-span-2">
+            {showTemplateSelector ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customize Your CV</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TemplateSelector
+                    selectedTemplate={selectedTemplate.id}
+                    selectedColors={customColors}
+                    onTemplateChange={handleTemplateChange}
+                    onColorChange={handleColorChange}
                   />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={cv.personalInfo.email}
-                    onChange={(e) => updatePersonalInfo('email', e.target.value)}
-                    placeholder="john@example.com"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={cv.personalInfo.phone}
-                    onChange={(e) => updatePersonalInfo('phone', e.target.value)}
-                    placeholder="+1 (555) 123-4567"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    value={cv.personalInfo.address}
-                    onChange={(e) => updatePersonalInfo('address', e.target.value)}
-                    placeholder="City, State, Country"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="linkedin">LinkedIn</Label>
-                  <Input
-                    id="linkedin"
-                    value={cv.personalInfo.linkedin}
-                    onChange={(e) => updatePersonalInfo('linkedin', e.target.value)}
-                    placeholder="linkedin.com/in/johndoe"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    value={cv.personalInfo.website}
-                    onChange={(e) => updatePersonalInfo('website', e.target.value)}
-                    placeholder="www.johndoe.com"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="summary">Professional Summary</Label>
-                <Textarea
-                  id="summary"
-                  value={cv.personalInfo.summary}
-                  onChange={(e) => updatePersonalInfo('summary', e.target.value)}
-                  placeholder="Write a brief summary about yourself..."
-                  rows={4}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Experience */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Work Experience</CardTitle>
-                <Button onClick={addExperience} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Experience
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {cv.experience.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No experience added yet</p>
-              ) : (
-                <div className="space-y-6">
-                  {cv.experience.map((exp) => (
-                    <div key={exp.id} className="border rounded-lg p-4 space-y-4">
-                      <div className="flex justify-between items-start">
-                        <h4 className="font-medium">Experience Entry</h4>
-                        <Button
-                          onClick={() => removeExperience(exp.id)}
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Company</Label>
-                          <Input
-                            value={exp.company}
-                            onChange={(e) => updateExperience(exp.id, 'company', e.target.value)}
-                            placeholder="Company Name"
-                          />
-                        </div>
-                        <div>
-                          <Label>Position</Label>
-                          <Input
-                            value={exp.position}
-                            onChange={(e) => updateExperience(exp.id, 'position', e.target.value)}
-                            placeholder="Job Title"
-                          />
-                        </div>
-                        <div>
-                          <Label>Start Date</Label>
-                          <Input
-                            type="month"
-                            value={exp.startDate}
-                            onChange={(e) => updateExperience(exp.id, 'startDate', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label>End Date</Label>
-                          <Input
-                            type="month"
-                            value={exp.endDate}
-                            onChange={(e) => updateExperience(exp.id, 'endDate', e.target.value)}
-                            disabled={exp.current}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`current-${exp.id}`}
-                          checked={exp.current}
-                          onCheckedChange={(checked) => updateExperience(exp.id, 'current', checked)}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-8">
+                {/* Personal Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Personal Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="fullName">Full Name</Label>
+                        <Input
+                          id="fullName"
+                          value={cv.personalInfo.fullName}
+                          onChange={(e) => updatePersonalInfo('fullName', e.target.value)}
+                          placeholder="John Doe"
                         />
-                        <Label htmlFor={`current-${exp.id}`}>Currently working here</Label>
                       </div>
                       <div>
-                        <Label>Description</Label>
-                        <Textarea
-                          value={exp.description}
-                          onChange={(e) => updateExperience(exp.id, 'description', e.target.value)}
-                          placeholder="Describe your responsibilities and achievements..."
-                          rows={3}
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={cv.personalInfo.email}
+                          onChange={(e) => updatePersonalInfo('email', e.target.value)}
+                          placeholder="john@example.com"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input
+                          id="phone"
+                          value={cv.personalInfo.phone}
+                          onChange={(e) => updatePersonalInfo('phone', e.target.value)}
+                          placeholder="+1 (555) 123-4567"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="address">Address</Label>
+                        <Input
+                          id="address"
+                          value={cv.personalInfo.address}
+                          onChange={(e) => updatePersonalInfo('address', e.target.value)}
+                          placeholder="City, State, Country"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="linkedin">LinkedIn</Label>
+                        <Input
+                          id="linkedin"
+                          value={cv.personalInfo.linkedin}
+                          onChange={(e) => updatePersonalInfo('linkedin', e.target.value)}
+                          placeholder="linkedin.com/in/johndoe"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="website">Website</Label>
+                        <Input
+                          id="website"
+                          value={cv.personalInfo.website}
+                          onChange={(e) => updatePersonalInfo('website', e.target.value)}
+                          placeholder="www.johndoe.com"
                         />
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Education */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Education</CardTitle>
-                <Button onClick={addEducation} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Education
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {cv.education.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No education added yet</p>
-              ) : (
-                <div className="space-y-6">
-                  {cv.education.map((edu) => (
-                    <div key={edu.id} className="border rounded-lg p-4 space-y-4">
-                      <div className="flex justify-between items-start">
-                        <h4 className="font-medium">Education Entry</h4>
-                        <Button
-                          onClick={() => removeEducation(edu.id)}
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Institution</Label>
-                          <Input
-                            value={edu.institution}
-                            onChange={(e) => updateEducation(edu.id, 'institution', e.target.value)}
-                            placeholder="University Name"
-                          />
-                        </div>
-                        <div>
-                          <Label>Degree</Label>
-                          <Input
-                            value={edu.degree}
-                            onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)}
-                            placeholder="Bachelor's, Master's, etc."
-                          />
-                        </div>
-                        <div>
-                          <Label>Field of Study</Label>
-                          <Input
-                            value={edu.field}
-                            onChange={(e) => updateEducation(edu.id, 'field', e.target.value)}
-                            placeholder="Computer Science, etc."
-                          />
-                        </div>
-                        <div>
-                          <Label>GPA (Optional)</Label>
-                          <Input
-                            value={edu.gpa || ''}
-                            onChange={(e) => updateEducation(edu.id, 'gpa', e.target.value)}
-                            placeholder="3.8/4.0"
-                          />
-                        </div>
-                        <div>
-                          <Label>Start Date</Label>
-                          <Input
-                            type="month"
-                            value={edu.startDate}
-                            onChange={(e) => updateEducation(edu.id, 'startDate', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label>End Date</Label>
-                          <Input
-                            type="month"
-                            value={edu.endDate}
-                            onChange={(e) => updateEducation(edu.id, 'endDate', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Skills */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Skills</CardTitle>
-                <Button onClick={addSkill} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Skill
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {cv.skills.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No skills added yet</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {cv.skills.map((skill) => (
-                    <div key={skill.id} className="flex items-center space-x-2">
-                      <Input
-                        value={skill.name}
-                        onChange={(e) => updateSkill(skill.id, 'name', e.target.value)}
-                        placeholder="Skill name"
-                        className="flex-1"
+                    <div>
+                      <Label htmlFor="summary">Professional Summary</Label>
+                      <Textarea
+                        id="summary"
+                        value={cv.personalInfo.summary}
+                        onChange={(e) => updatePersonalInfo('summary', e.target.value)}
+                        placeholder="Write a brief summary about yourself..."
+                        rows={4}
                       />
-                      <Select
-                        value={skill.level}
-                        onValueChange={(value) => updateSkill(skill.id, 'level', value)}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Beginner">Beginner</SelectItem>
-                          <SelectItem value="Intermediate">Intermediate</SelectItem>
-                          <SelectItem value="Advanced">Advanced</SelectItem>
-                          <SelectItem value="Expert">Expert</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        onClick={() => removeSkill(skill.id)}
-                        size="sm"
-                        variant="outline"
-                        className="text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Experience */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Work Experience</CardTitle>
+                      <Button onClick={addExperience} size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Experience
                       </Button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </CardHeader>
+                  <CardContent>
+                    {cv.experience.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">No experience added yet</p>
+                    ) : (
+                      <div className="space-y-6">
+                        {cv.experience.map((exp) => (
+                          <div key={exp.id} className="border rounded-lg p-4 space-y-4">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-medium">Experience Entry</h4>
+                              <Button
+                                onClick={() => removeExperience(exp.id)}
+                                size="sm"
+                                variant="outline"
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label>Company</Label>
+                                <Input
+                                  value={exp.company}
+                                  onChange={(e) => updateExperience(exp.id, 'company', e.target.value)}
+                                  placeholder="Company Name"
+                                />
+                              </div>
+                              <div>
+                                <Label>Position</Label>
+                                <Input
+                                  value={exp.position}
+                                  onChange={(e) => updateExperience(exp.id, 'position', e.target.value)}
+                                  placeholder="Job Title"
+                                />
+                              </div>
+                              <div>
+                                <Label>Start Date</Label>
+                                <Input
+                                  type="month"
+                                  value={exp.startDate}
+                                  onChange={(e) => updateExperience(exp.id, 'startDate', e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Label>End Date</Label>
+                                <Input
+                                  type="month"
+                                  value={exp.endDate}
+                                  onChange={(e) => updateExperience(exp.id, 'endDate', e.target.value)}
+                                  disabled={exp.current}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`current-${exp.id}`}
+                                checked={exp.current}
+                                onCheckedChange={(checked) => updateExperience(exp.id, 'current', checked)}
+                              />
+                              <Label htmlFor={`current-${exp.id}`}>Currently working here</Label>
+                            </div>
+                            <div>
+                              <Label>Description</Label>
+                              <Textarea
+                                value={exp.description}
+                                onChange={(e) => updateExperience(exp.id, 'description', e.target.value)}
+                                placeholder="Describe your responsibilities and achievements..."
+                                rows={3}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Education */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Education</CardTitle>
+                      <Button onClick={addEducation} size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Education
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {cv.education.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">No education added yet</p>
+                    ) : (
+                      <div className="space-y-6">
+                        {cv.education.map((edu) => (
+                          <div key={edu.id} className="border rounded-lg p-4 space-y-4">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-medium">Education Entry</h4>
+                              <Button
+                                onClick={() => removeEducation(edu.id)}
+                                size="sm"
+                                variant="outline"
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label>Institution</Label>
+                                <Input
+                                  value={edu.institution}
+                                  onChange={(e) => updateEducation(edu.id, 'institution', e.target.value)}
+                                  placeholder="University Name"
+                                />
+                              </div>
+                              <div>
+                                <Label>Degree</Label>
+                                <Input
+                                  value={edu.degree}
+                                  onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)}
+                                  placeholder="Bachelor's, Master's, etc."
+                                />
+                              </div>
+                              <div>
+                                <Label>Field of Study</Label>
+                                <Input
+                                  value={edu.field}
+                                  onChange={(e) => updateEducation(edu.id, 'field', e.target.value)}
+                                  placeholder="Computer Science, etc."
+                                />
+                              </div>
+                              <div>
+                                <Label>GPA (Optional)</Label>
+                                <Input
+                                  value={edu.gpa || ''}
+                                  onChange={(e) => updateEducation(edu.id, 'gpa', e.target.value)}
+                                  placeholder="3.8/4.0"
+                                />
+                              </div>
+                              <div>
+                                <Label>Start Date</Label>
+                                <Input
+                                  type="month"
+                                  value={edu.startDate}
+                                  onChange={(e) => updateEducation(edu.id, 'startDate', e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Label>End Date</Label>
+                                <Input
+                                  type="month"
+                                  value={edu.endDate}
+                                  onChange={(e) => updateEducation(edu.id, 'endDate', e.target.value)}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Skills */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Skills</CardTitle>
+                      <Button onClick={addSkill} size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Skill
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {cv.skills.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">No skills added yet</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {cv.skills.map((skill) => (
+                          <div key={skill.id} className="flex items-center space-x-2">
+                            <Input
+                              value={skill.name}
+                              onChange={(e) => updateSkill(skill.id, 'name', e.target.value)}
+                              placeholder="Skill name"
+                              className="flex-1"
+                            />
+                            <Select
+                              value={skill.level}
+                              onValueChange={(value) => updateSkill(skill.id, 'level', value)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Beginner">Beginner</SelectItem>
+                                <SelectItem value="Intermediate">Intermediate</SelectItem>
+                                <SelectItem value="Advanced">Advanced</SelectItem>
+                                <SelectItem value="Expert">Expert</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              onClick={() => removeSkill(skill.id)}
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+
+          {/* Right Panel - Live Preview */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Live Preview</CardTitle>
+                </CardHeader>
+                <CardContent className="p-2">
+                  <div className="transform scale-50 origin-top-left w-[200%] h-96 overflow-hidden">
+                    <EnhancedCVPreview
+                      cv={cv}
+                      template={selectedTemplate}
+                      customColors={customColors}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </main>
     </div>

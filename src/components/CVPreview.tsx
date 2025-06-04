@@ -1,11 +1,13 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { CV } from '../types/cv';
+import { CVTemplate, CV_TEMPLATES } from '../types/template';
 import { Button } from '@/components/ui/button';
 import { Download, Edit, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import EnhancedCVPreview from './EnhancedCVPreview';
 
 interface CVPreviewProps {
   cv: CV;
@@ -14,6 +16,11 @@ interface CVPreviewProps {
 const CVPreview: React.FC<CVPreviewProps> = ({ cv }) => {
   const navigate = useNavigate();
   const cvRef = useRef<HTMLDivElement>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<CVTemplate>(CV_TEMPLATES[0]);
+  const [customColors, setCustomColors] = useState({ 
+    primary: CV_TEMPLATES[0].colors.primary, 
+    secondary: CV_TEMPLATES[0].colors.secondary 
+  });
 
   const downloadPDF = async () => {
     if (!cvRef.current) return;
@@ -50,12 +57,6 @@ const CVPreview: React.FC<CVPreviewProps> = ({ cv }) => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -84,122 +85,14 @@ const CVPreview: React.FC<CVPreviewProps> = ({ cv }) => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div 
           ref={cvRef}
-          className="bg-white shadow-lg rounded-lg overflow-hidden"
+          className="shadow-lg rounded-lg overflow-hidden"
           style={{ minHeight: '297mm' }}
         >
-          {/* CV Content */}
-          <div className="p-8">
-            {/* Header */}
-            <div className="text-center border-b border-gray-200 pb-6 mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {cv.personalInfo.fullName}
-              </h1>
-              <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-600">
-                {cv.personalInfo.email && (
-                  <span>{cv.personalInfo.email}</span>
-                )}
-                {cv.personalInfo.phone && (
-                  <span>{cv.personalInfo.phone}</span>
-                )}
-                {cv.personalInfo.address && (
-                  <span>{cv.personalInfo.address}</span>
-                )}
-              </div>
-              {(cv.personalInfo.linkedin || cv.personalInfo.website) && (
-                <div className="flex flex-wrap justify-center gap-4 text-sm text-blue-600 mt-2">
-                  {cv.personalInfo.linkedin && (
-                    <span>{cv.personalInfo.linkedin}</span>
-                  )}
-                  {cv.personalInfo.website && (
-                    <span>{cv.personalInfo.website}</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Professional Summary */}
-            {cv.personalInfo.summary && (
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">
-                  Professional Summary
-                </h2>
-                <p className="text-gray-700 leading-relaxed">
-                  {cv.personalInfo.summary}
-                </p>
-              </div>
-            )}
-
-            {/* Experience */}
-            {cv.experience.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">
-                  Work Experience
-                </h2>
-                <div className="space-y-4">
-                  {cv.experience.map((exp) => (
-                    <div key={exp.id}>
-                      <div className="flex justify-between items-start mb-1">
-                        <h3 className="font-semibold text-gray-900">{exp.position}</h3>
-                        <span className="text-sm text-gray-600">
-                          {formatDate(exp.startDate)} - {exp.current ? 'Present' : formatDate(exp.endDate)}
-                        </span>
-                      </div>
-                      <p className="text-gray-700 font-medium mb-2">{exp.company}</p>
-                      {exp.description && (
-                        <p className="text-gray-600 text-sm leading-relaxed">
-                          {exp.description}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Education */}
-            {cv.education.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">
-                  Education
-                </h2>
-                <div className="space-y-3">
-                  {cv.education.map((edu) => (
-                    <div key={edu.id}>
-                      <div className="flex justify-between items-start mb-1">
-                        <h3 className="font-semibold text-gray-900">
-                          {edu.degree} in {edu.field}
-                        </h3>
-                        <span className="text-sm text-gray-600">
-                          {formatDate(edu.startDate)} - {formatDate(edu.endDate)}
-                        </span>
-                      </div>
-                      <p className="text-gray-700">{edu.institution}</p>
-                      {edu.gpa && (
-                        <p className="text-sm text-gray-600">GPA: {edu.gpa}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Skills */}
-            {cv.skills.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">
-                  Skills
-                </h2>
-                <div className="grid grid-cols-2 gap-2">
-                  {cv.skills.map((skill) => (
-                    <div key={skill.id} className="flex justify-between">
-                      <span className="text-gray-700">{skill.name}</span>
-                      <span className="text-sm text-gray-500">{skill.level}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <EnhancedCVPreview
+            cv={cv}
+            template={selectedTemplate}
+            customColors={customColors}
+          />
         </div>
       </div>
     </div>
