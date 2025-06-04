@@ -16,8 +16,22 @@ const Index = () => {
   }, [user, navigate]);
 
   const handleGetStarted = () => {
-    navigate('/dashboard');
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      // Show auth form by navigating to a route that will show the auth
+      navigate('/dashboard'); // This will be handled by ProtectedRoute
+    }
   };
+
+  // Don't render anything if user is logged in (will redirect)
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
