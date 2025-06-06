@@ -1,5 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { generateUniqueUserId } from '../utils/idGenerator';
+import { validateDataIntegrity } from '../utils/cvStorage';
 
 interface User {
   id: string;
@@ -22,52 +24,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('cv_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    try {
+      const savedUser = localStorage.getItem('cv_user');
+      if (savedUser) {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        console.log('Restored user session:', parsedUser.id, parsedUser.name);
+      }
+      
+      // Run data integrity check on app load
+      validateDataIntegrity();
+    } catch (error) {
+      console.error('Error restoring user session:', error);
     }
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const users = JSON.parse(localStorage.getItem('cv_users') || '[]');
-    const foundUser = users.find((u: any) => u.email === email && u.password === password);
-    
-    if (foundUser) {
-      const userWithoutPassword = { id: foundUser.id, email: foundUser.email, name: foundUser.name };
-      setUser(userWithoutPassword);
-      localStorage.setItem('cv_user', JSON.stringify(userWithoutPassword));
-      return true;
+    try {
+      const users = JSON.parse(localStorage.getItem('cv_users') || '[]');
+      const foundUser = users.find((u: any) => u.email === email && u.password === password);
+      
+      if (foundUser) {
+        const userWithoutPassword = { id: foundUser.id, email: foundUser.email, name: foundUser.name };
+        setUser(userWithoutPassword);
+        localStorage.setItem('cv_user', JSON.stringify(userWithoutPassword));
+        console.log('User logged in:', foundUser.id, foundUser.name);
+        
+        // Run data integrity check after login
+        validateDataIntegrity();
+        return true;
+      }
+      console.log('Login failed for email:', email);
+      return false;
+    } catch (error) {
+      console.error('Error during login:', error);
+      return false;
     }
-    return false;
   };
 
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
-    const users = JSON.parse(localStorage.getItem('cv_users') || '[]');
-    
-    if (users.find((u: any) => u.email === email)) {
-      return false; // User already exists
+    try {
+      const users = JSON.parse(localStorage.getItem('cv_users') || '[]');
+      
+      if (users.find((u: any) => u.email === email)) {
+        console.log('Registration failed - user already exists:', email);
+        return false; // User already exists
+      }
+
+      const newUserId = generateUniqueUserId();
+      const newUser = {
+        id: newUserId,
+        email,
+        password,
+        name
+      };
+
+      users.push(newUser);
+      localStorage.setItem('cv_users', JSON.stringify(users));
+      console.log('New user registered:', newUserId, name);
+      
+      const userWithoutPassword = { id: newUser.id, email: newUser.email, name: newUser.name };
+      setUser(userWithoutPassword);
+      localStorage.setItem('cv_user', JSON.stringify(userWithoutPassword));
+      
+      // Run data integrity check after registration
+      validateDataIntegrity();
+      return true;
+    } catch (error) {
+      console.error('Error during registration:', error);
+      return false;
     }
-
-    const newUser = {
-      id: Date.now().toString(),
-      email,
-      password,
-      name
-    };
-
-    users.push(newUser);
-    localStorage.setItem('cv_users', JSON.stringify(users));
-    
-    const userWithoutPassword = { id: newUser.id, email: newUser.email, name: newUser.name };
-    setUser(userWithoutPassword);
-    localStorage.setItem('cv_user', JSON.stringify(userWithoutPassword));
-    return true;
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('cv_user');
+    console.log('User logged out');
   };
 
   return (

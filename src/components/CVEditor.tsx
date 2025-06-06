@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { saveCVToStorage, getCVById } from '../utils/cvStorage';
+import { generateUniqueId } from '../utils/idGenerator';
 import { CV, PersonalInfo, Experience, Education, Skill } from '../types/cv';
 import { CVTemplate, CV_TEMPLATES } from '../types/template';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -24,7 +25,7 @@ const CVEditor = () => {
   const { toast } = useToast();
   
   const [cv, setCv] = useState<CV>({
-    id: cvId || Date.now().toString(),
+    id: cvId || generateUniqueId(),
     userId: user?.id || '',
     title: 'My CV',
     personalInfo: {
@@ -102,7 +103,7 @@ const CVEditor = () => {
 
   const addExperience = () => {
     const newExp: Experience = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       company: '',
       position: '',
       startDate: '',
@@ -134,7 +135,7 @@ const CVEditor = () => {
 
   const addEducation = () => {
     const newEdu: Education = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       institution: '',
       degree: '',
       field: '',
@@ -166,7 +167,7 @@ const CVEditor = () => {
 
   const addSkill = () => {
     const newSkill: Skill = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       name: '',
       level: 'Intermediate'
     };
